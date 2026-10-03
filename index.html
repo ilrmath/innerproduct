@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>内積と正射影</title>
+<style>
+  :root{
+    --paper:#ffffff; --text:#1f2933; --axis:#a3abb4; --line:#dfe4ea;
+    --a:#1f4e8c;      /* a ベクトル（紺） */
+    --v:#ca194f;      /* v ベクトル（赤） */
+    --proj:#e08a00;   /* 射影長（橙） */
+    --ok:#16865c;     /* ちょうど 1/2（緑） */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--paper);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
+  body{padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0)}
+  .tabs{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:14px;display:flex;gap:8px;z-index:5}
+  .tabs button{font:inherit;font-size:22px;font-weight:800;width:52px;height:52px;border-radius:50%;
+    border:2px solid var(--text);background:var(--paper);color:var(--text);cursor:pointer}
+  .tabs button[aria-pressed="true"]{background:var(--text);color:var(--paper)}
+  .scene{display:none;height:100vh;height:100dvh;flex-direction:column;align-items:center;justify-content:center;padding:18px 16px 14px}
+  .scene.on{display:flex}
+  .title{font-size:clamp(24px,4.2vw,44px);font-weight:800;margin:0 0 4px;text-align:center;letter-spacing:.02em}
+  .m{font-family:"Times New Roman",Georgia,serif;font-style:italic}
+  .vec{position:relative;display:inline-block;font-family:"Times New Roman",Georgia,serif;font-style:italic}
+  .vec::before{content:"→";position:absolute;left:50%;top:-.62em;transform:translateX(-46%);font-size:.62em;font-style:normal}
+  .formula{font-size:clamp(26px,4.6vw,50px);text-align:center;margin:6px 0 0;white-space:nowrap}
+  .a{color:var(--a)} .v{color:var(--v)} .p{color:var(--proj)} .ok{color:var(--ok)}
+  svg{display:block;width:100%;max-width:1100px;flex:1 1 auto;min-height:0;touch-action:none;user-select:none}
+  .t{font-family:"Times New Roman",Georgia,serif;font-style:italic}
+  .halo{paint-order:stroke;stroke:#fff;stroke-width:7px;stroke-linejoin:round}
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <button id="b1" aria-pressed="true">①</button>
+  <button id="b2" aria-pressed="false">②</button>
+</div>
+
+<!-- ① 原理 -->
+<section class="scene on" id="s1">
+  <div class="title">内積 ＝ ベースライン × 射影長</div>
+  <svg id="fig1" viewBox="0 0 1000 440" aria-label="vを動かして射影長を見る"></svg>
+  <div class="formula">
+    <span class="vec a">a</span> · <span class="vec v">v</span>
+    ＝ <span class="a">|<span class="vec">a</span>|</span> × <span class="p m">OH</span>
+  </div>
+</section>
+
+<!-- ② 課題2 -->
+<section class="scene" id="s2">
+  <div class="title">射影長が <span class="ok">1/2</span> になる <span class="v">V</span> は？</div>
+  <svg id="fig2" viewBox="0 0 1000 620" aria-label="Vを動かして射影長を見る"></svg>
+  <div class="formula" id="read"></div>
+</section>
+
+<script>
+(()=>{
+  const NS='http://www.w3.org/2000/svg';
+  const rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI, norm=d=>(d%360+360)%360;
+  const mk=(svg)=>({
+    E:(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e},
+    T:(x,y,s,a={})=>{const e=document.createElementNS(NS,'text');const o=Object.assign({x,y,'text-anchor':'middle','dominant-baseline':'middle','font-size':30,class:'t halo'},a);for(const k in o)e.setAttribute(k,o[k]);e.textContent=s;svg.appendChild(e);return e}
+  });
+  function defs(svg){
+    const d=document.createElementNS(NS,'defs');
+    d.innerHTML='<marker id="'+svg.id+'A" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="#1f4e8c"/></marker>'+
+                '<marker id="'+svg.id+'V" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="#ca194f"/></marker>';
+    svg.appendChild(d);
+  }
+  // 直角マーク：H で、u（基線方向の単位ベクトル）と n（H→V 方向）に沿って
+  function rightMark(E,H,V,u,toward,color,s=16){
+    let nx=V.x-H.x, ny=V.y-H.y; const L=Math.hypot(nx,ny); if(L<s*1.4) return;
+    nx/=L; ny/=L;
+    const p1={x:H.x+toward*u.x*s,y:H.y+toward*u.y*s};
+    const p2={x:p1.x+nx*s,y:p1.y+ny*s}, p3={x:H.x+nx*s,y:H.y+ny*s};
+    E('path',{d:`M${p1.x},${p1.y} L${p2.x},${p2.y} L${p3.x},${p3.y}`,fill:'none',stroke:color,'stroke-width':3});
+  }
+  // なす角の弧：O 中心、角 a0 から a1 へ小さい側（svg 座標は y 下向き）
+  function angleArc(E,T,O,a0,a1,r,color,label){
+    let d=norm(a1-a0); if(d>180) d-=360;          // 小さい側の符号付き
+    if(Math.abs(d)<1) return;
+    const n=Math.max(8,Math.ceil(Math.abs(d)/3)); let path='';
+    for(let i=0;i<=n;i++){const t=rad(a0+d*i/n); path+=(i?'L':'M')+(O.x+r*Math.cos(t))+','+(O.y-r*Math.sin(t));}
+    E('path',{d:path,fill:'none',stroke:color,'stroke-width':3});
+    const m=rad(a0+d/2), lr=r+34;
+    T(O.x+lr*Math.cos(m),O.y-lr*Math.sin(m),label,{fill:color,'font-size':34});
+  }
+
+  // ---- tabs ----
+  const s1=document.getElementById('s1'), s2=document.getElementById('s2');
+  const b1=document.getElementById('b1'), b2=document.getElementById('b2');
+  function show(n){s1.classList.toggle('on',n===1); s2.classList.toggle('on',n===2);
+    b1.setAttribute('aria-pressed',n===1); b2.setAttribute('aria-pressed',n===2);}
+  b1.onclick=()=>show(1); b2.onclick=()=>show(2);
+  document.addEventListener('keydown',e=>{if(e.key==='1'||e.key==='ArrowLeft')show(1); if(e.key==='2'||e.key==='ArrowRight')show(2);});
+
+  function svgPt(svg,e){const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
+  function dragify(svg,onMove){
+    let drag=false;
+    svg.addEventListener('pointerdown',e=>{drag=true;svg.setPointerCapture(e.pointerId);onMove(svgPt(svg,e));e.preventDefault();});
+    svg.addEventListener('pointermove',e=>{if(drag)onMove(svgPt(svg,e));});
+    ['pointerup','pointercancel'].forEach(t=>svg.addEventListener(t,()=>drag=false));
+  }
+
+  // ================= ① =================
+  const f1=document.getElementById('fig1'); const {E:E1,T:T1}=mk(f1);
+  const O1={x:300,y:285}, AX=900;          // a は O1 から右へ
+  let V1={x:620,y:95};
+  function draw1(){
+    f1.innerHTML=''; defs(f1);
+    const H={x:V1.x,y:O1.y}, u={x:1,y:0};
+    E1('line',{x1:40,y1:O1.y,x2:970,y2:O1.y,stroke:'var(--axis)','stroke-width':1.5});
+    // 射影長
+    E1('line',{x1:O1.x,y1:O1.y,x2:H.x,y2:H.y,stroke:'var(--proj)','stroke-width':22,'stroke-linecap':'round',opacity:.55});
+    // a
+    E1('line',{x1:O1.x,y1:O1.y,x2:AX,y2:O1.y,stroke:'var(--a)','stroke-width':7,'stroke-linecap':'round','marker-end':'url(#fig1A)'});
+    T1(AX+30,O1.y-8,'a',{fill:'var(--a)','font-size':40}); T1(AX+31,O1.y-38,'→',{fill:'var(--a)','font-size':26,'font-style':'normal',class:''});
+    // 垂線＋直角
+    E1('line',{x1:V1.x,y1:V1.y,x2:H.x,y2:H.y,stroke:'var(--v)','stroke-width':3,'stroke-dasharray':'9 8'});
+    rightMark(E1,H,V1,u,(H.x>=O1.x)?-1:1,'var(--v)');
+    // なす角
+    const vAng=deg(Math.atan2(-(V1.y-O1.y),V1.x-O1.x));
+    angleArc(E1,T1,O1,0,vAng,72,'var(--text)','θ');
+    // v
+    E1('line',{x1:O1.x,y1:O1.y,x2:V1.x,y2:V1.y,stroke:'var(--v)','stroke-width':7,'stroke-linecap':'round','marker-end':'url(#fig1V)'});
+    const lv={x:V1.x+(V1.x>=O1.x?28:-28),y:V1.y-22};
+    T1(lv.x,lv.y,'v',{fill:'var(--v)','font-size':40}); T1(lv.x+1,lv.y-30,'→',{fill:'var(--v)','font-size':26,'font-style':'normal',class:''});
+    E1('circle',{cx:O1.x,cy:O1.y,r:6,fill:'var(--text)'});
+    T1(O1.x-18,O1.y+30,'O',{'font-size':32});
+    T1(H.x,H.y+36,'H',{fill:'var(--proj)','font-size':32});
+    // ブラケット：ベースライン
+    E1('path',{d:`M${O1.x} 350 v14 H${AX} v-14`,fill:'none',stroke:'var(--a)','stroke-width':3});
+    T1((O1.x+AX)/2,402,'ベースライン',{fill:'var(--a)','font-size':32,'font-style':'normal','font-weight':700,class:'halo'});
+    if(Math.abs(H.x-O1.x)>150) T1((O1.x+H.x)/2,O1.y+36,'射影長',{fill:'var(--proj)','font-size':28,'font-style':'normal','font-weight':700,class:'halo'});
+    // ハンドル
+    E1('circle',{cx:V1.x,cy:V1.y,r:18,fill:'#fff',stroke:'var(--v)','stroke-width':6,style:'cursor:grab'});
+  }
+  dragify(f1,q=>{V1={x:Math.max(60,Math.min(960,q.x)),y:Math.max(40,Math.min(400,q.y))}; draw1();});
+  draw1();
+
+  // ================= ② =================
+  const f2=document.getElementById('fig2'), read=document.getElementById('read'); const {E:E2,T:T2}=mk(f2);
+  const O={x:500,y:330}, R=212, aDeg=150, aLen=2; let x=40;
+  const U=d=>({x:Math.cos(rad(d)),y:-Math.sin(rad(d))});
+  const P=(d,r)=>{const u=U(d);return{x:O.x+u.x*R*r,y:O.y+u.y*R*r}};
+  const f2d=v=>{if(Math.abs(v)<5e-3)v=0;return v.toFixed(2).replace('-','−')};
+  const piForm={90:'π/2',210:'7π/6'};
+  function draw2(){
+    f2.innerHTML=''; defs(f2);
+    const uA=U(aDeg), A=P(aDeg,aLen), V=P(x,1);
+    const proj=Math.cos(rad(x-aDeg)), H={x:O.x+uA.x*R*proj,y:O.y+uA.y*R*proj};
+    const hit=Math.abs(proj-0.5)<0.004, col=hit?'var(--ok)':'var(--proj)';
+    E2('line',{x1:O.x-470,y1:O.y,x2:O.x+330,y2:O.y,stroke:'var(--axis)','stroke-width':1.5});
+    E2('line',{x1:O.x,y1:O.y+270,x2:O.x,y2:O.y-300,stroke:'var(--axis)','stroke-width':1.5});
+    E2('circle',{cx:O.x,cy:O.y,r:R,fill:'none',stroke:'var(--line)','stroke-width':3});
+    E2('line',{x1:O.x-uA.x*R*2.3,y1:O.y-uA.y*R*2.3,x2:O.x+uA.x*R*2.3,y2:O.y+uA.y*R*2.3,stroke:'var(--a)','stroke-width':2,'stroke-dasharray':'8 9',opacity:.35});
+    const Q=P(aDeg,.5), n={x:-uA.y,y:uA.x};
+    E2('line',{x1:Q.x-n.x*16,y1:Q.y-n.y*16,x2:Q.x+n.x*16,y2:Q.y+n.y*16,stroke:'var(--ok)','stroke-width':4});
+    T2(Q.x-n.x*46,Q.y-n.y*46,'1/2',{fill:'var(--ok)','font-style':'normal','font-size':28});
+    E2('line',{x1:O.x,y1:O.y,x2:H.x,y2:H.y,stroke:col,'stroke-width':18,'stroke-linecap':'round',opacity:.75});
+    E2('line',{x1:V.x,y1:V.y,x2:H.x,y2:H.y,stroke:'var(--v)','stroke-width':3,'stroke-dasharray':'9 8'});
+    rightMark(E2,H,V,uA,(proj>=0)?-1:1,hit?'var(--ok)':'var(--v)');
+    // なす角（OA と OV の小さい側）
+    const th=Math.min(Math.abs(norm(x-aDeg)),360-Math.abs(norm(x-aDeg)));
+    angleArc(E2,T2,O,aDeg,x,72,hit?'var(--ok)':'var(--text)',hit?'π/3':'θ');
+    E2('line',{x1:O.x,y1:O.y,x2:A.x,y2:A.y,stroke:'var(--a)','stroke-width':7,'stroke-linecap':'round','marker-end':'url(#fig2A)'});
+    E2('line',{x1:O.x,y1:O.y,x2:V.x,y2:V.y,stroke:'var(--v)','stroke-width':7,'stroke-linecap':'round','marker-end':'url(#fig2V)'});
+    T2(A.x-6,A.y-34,'A(−√3, 1)',{fill:'var(--a)','font-style':'normal','font-size':30});
+    const lv=P(x,1.24); T2(lv.x,lv.y,'V',{fill:'var(--v)','font-style':'normal','font-size':34,'font-weight':700});
+    E2('circle',{cx:O.x,cy:O.y,r:6,fill:'var(--text)'});
+    T2(O.x+20,O.y+26,'O',{'font-size':28});
+    const lh={x:H.x+n.x*30,y:H.y+n.y*30}; if(!hit) T2(lh.x,lh.y,'H',{fill:col,'font-style':'normal','font-size':28,'font-weight':700});
+    E2('circle',{cx:V.x,cy:V.y,r:20,fill:'#fff',stroke:hit?'var(--ok)':'var(--v)','stroke-width':6,style:'cursor:grab'});
+    if(hit) E2('circle',{cx:V.x,cy:V.y,r:33,fill:'none',stroke:'var(--ok)','stroke-width':4,opacity:.5});
+    const lhs='<span class="vec a">a</span> · <span class="vec v">v</span> ＝ ';
+    if(hit){
+      read.innerHTML=lhs+'<span class="a">2</span> × <span class="ok">1/2</span> ＝ <span class="ok" style="font-weight:800">1</span>　<span class="ok"><span class="m">x</span> = '+piForm[Math.round(x)]+'</span>';
+    }else{
+      read.innerHTML=lhs+'<span class="a">2</span> × <span class="m" style="color:var(--proj)">'+f2d(proj)+'</span> ＝ '+f2d(2*proj);
+    }
+  }
+  dragify(f2,q=>{
+    let d=norm(deg(Math.atan2(-(q.y-O.y),q.x-O.x)));
+    for(const s of [90,210]){ if(Math.min(Math.abs(d-s),360-Math.abs(d-s))<5) d=s; }
+    x=d; draw2();
+  });
+  draw2();
+})();
+</script>
+</body>
+</html>
