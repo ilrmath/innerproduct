@@ -159,8 +159,18 @@
     E2('circle',{cx:O.x,cy:O.y,r:R,fill:'none',stroke:'var(--line)','stroke-width':3});
     E2('line',{x1:O.x-uA.x*R*2.3,y1:O.y-uA.y*R*2.3,x2:O.x+uA.x*R*2.3,y2:O.y+uA.y*R*2.3,stroke:'var(--a)','stroke-width':2,'stroke-dasharray':'8 9',opacity:.35});
     const Q=P(aDeg,.5), n={x:-uA.y,y:uA.x};
-    E2('line',{x1:Q.x-n.x*16,y1:Q.y-n.y*16,x2:Q.x+n.x*16,y2:Q.y+n.y*16,stroke:'var(--ok)','stroke-width':4});
-    T2(Q.x-n.x*46,Q.y-n.y*46,'1/2',{fill:'var(--ok)','font-style':'normal','font-size':28});
+    E2('line',{x1:Q.x-n.x*14,y1:Q.y-n.y*14,x2:Q.x+n.x*14,y2:Q.y+n.y*14,stroke:'var(--ok)','stroke-width':4});
+    // U 字の点線（−n 側）で長さを示す：端で垂直に離れるので、内側と外側が重ならない
+    function brace(p0,p1,color,label,lo,sd=1){
+      const L=Math.hypot(p1.x-p0.x,p1.y-p0.y), h=L*0.5;
+      const c0={x:p0.x-sd*n.x*h,y:p0.y-sd*n.y*h}, c1={x:p1.x-sd*n.x*h,y:p1.y-sd*n.y*h};
+      E2('path',{d:`M${p0.x},${p0.y} C${c0.x},${c0.y} ${c1.x},${c1.y} ${p1.x},${p1.y}`,fill:'none',stroke:color,'stroke-width':3,'stroke-dasharray':'10 8'});
+      const m={x:(p0.x+p1.x)/2,y:(p0.y+p1.y)/2}, off=0.75*h+lo;   // 曲線の頂点の外側
+      T2(m.x-sd*n.x*off,m.y-sd*n.y*off,label,{fill:color,'font-style':'normal','font-size':32,'font-weight':700});
+    }
+    const vSide=((V.x-O.x)*n.x+(V.y-O.y)*n.y)<0 ? -1 : 1;   // V が −n 側なら 1/2 は反対側へ
+    brace(O,Q,'var(--ok)','1/2',26,vSide);
+    brace(O,A,'var(--a)','2',30);
     E2('line',{x1:O.x,y1:O.y,x2:H.x,y2:H.y,stroke:col,'stroke-width':18,'stroke-linecap':'round',opacity:.75});
     E2('line',{x1:V.x,y1:V.y,x2:H.x,y2:H.y,stroke:'var(--v)','stroke-width':3,'stroke-dasharray':'9 8'});
     rightMark(E2,H,V,uA,(proj>=0)?-1:1,hit?'var(--ok)':'var(--v)');
